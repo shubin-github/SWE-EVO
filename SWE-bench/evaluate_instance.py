@@ -87,11 +87,24 @@ if __name__ =="__main__":
     files = list(root.glob("*.json"))
     instances = []
     count = 0
-    for p in tqdm(files, desc='Loading data ...', total=len(files)):
+
+    # Load the prediction data.
+    with open(in_path) as f:
+      preds = json.load(f)
+    print("Loaded num_preds:", len(preds))
+    preds_data = {p['instance_id']: p for p in preds}
+
+    ## Load the instances
+    instances = []
+    with open('swe_evo_data.json') as f:
+      for line in f.readlines():
+        instance = json.loads(line)
+        instances.append(instance)
+      
+    for d in instances:
         if args.instance != '...':
-            if p != Path(f"output_final/{args.instance}.json"): 
+            if d['instance_id'] != args.instance: 
                 continue
-        d = json.loads(p.read_text())
         current_version = d.get("end_version") or d.get("version")
         true_version = current_version
         specs_by_ver = MAP_REPO_VERSION_TO_SPECS.get(d["repo"], {}) 
@@ -122,11 +135,9 @@ if __name__ =="__main__":
                         d["patch"] = obj["test_result"]["git_patch"]
                         flag = True
         elif args.scaffold == 'SWE-agent':
-            with open(in_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if d["instance_id"] in data.keys():
-                    d["patch"] = data[d["instance_id"]]["model_patch"]
-                    flag = True
+            if d["instance_id"] in data.keys():
+                d["patch"] = data[d["instance_id"]]["model_patch"]
+                flag = True
 
         if flag == False:
             print(f'Cannot find trajectories for instance {d["instance_id"]}!!!')
